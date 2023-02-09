@@ -1,12 +1,14 @@
 from rest_framework import serializers
 from . models import *
 from decimal import Decimal
-
+from django.db import transaction
+from .signals import order_created
 
 class ProductSerializer(serializers.ModelSerializer):
+    category_name = serializers.CharField(source ='category.name',read_only=True)
     class Meta:
         model= Product
-        fields = ['id','name','image','category','price','offer_price','offer_in_percentage','unit','category','last_update']
+        fields = ['id','name','image','category','price','offer_price','offer_in_percentage','unit','category_name','last_update']
     
 
     offer_price = serializers.SerializerMethodField(method_name='calculate_final_price')
@@ -33,7 +35,7 @@ class CustomerSerializer(serializers.ModelSerializer):
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields =['id','name','product_count']
+        fields =['id','name','product_count','image']
     
     product_count = serializers.IntegerField(read_only = True)
 
@@ -47,7 +49,6 @@ class SimpleProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = ['id','name','price','offer_in_percentage','offer_price']
-
     offer_price = serializers.SerializerMethodField(method_name='calculate_final_price')
     def calculate_final_price(self,product:Product):
         final= product.price * int(product.offer_in_percentage)/ Decimal(100)
@@ -112,3 +113,55 @@ class UpdateCartItemSerializer(serializers.ModelSerializer):
         model = CartItem
         fields = ['quantity']
 
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    product = SimpleProductSerializer()
+    class Meta:
+        model =OrderItem
+        fields = ['id','product','quantity','offer_price']
+
+
+class OrderSerializer(serializers.ModelSerializer): 
+    items = OrderItemSerializer(many=True)
+    class Meta:
+        model = Order
+        fields = ['id','customer','placed_at','payment_status','items']
+
+class CreateOrderSerializer(serializers.Serializer):
+    # cart_id = serializers.UUIDField()
+    def validate_cart_id(self,cart_id):
+        if not Cart.objects.filter(pk=cart_id).exists():
+            raise serializers.ValidationError('no cart with given ID was found')
+        if CartItem.objects.filter(cart_id=cart_id).count()==0:
+            raise serializers.ValidationError("The cart is empty")
+        return cart_id
+    
+    def save(self, **kwargs): 
+        with transaction.atomic():
+            cart_id =self.validated_data['cart_id']
+            try:
+                customer = Customer.objects.get(user_id=self.context['user_id'])
+            except Customer.DoesNotExist:
+                customer=None
+            order = Order.objects.create(customer=customer)
+            cart_items=CartItem.objects.select_related('product').filter(cart_id=cart_id)
+
+            order_items = [
+                OrderItem(
+                    order=order,
+                    product=item.product,
+                    unit_price=item.offer_price,
+                    quantity=item.quantity
+                        )
+                    for item in cart_items
+                ]
+            OrderItem.objects.bulk_create(order_items)
+            Cart.objects.filter(pk=cart_id).delete()
+            order_created.send_robust(self.__class__,order=order)
+            return order
+
+
+class UpdateOrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields=['payment_status']

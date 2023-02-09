@@ -10,4 +10,5 @@ router.register('category',views.CategoryViewSet),
 router.register('review',views.ReviewViewSet),
 router.register('banner',views.BannerViewSet),
 router.register('carts',views.CartViewSet,basename="carts")
+router.register('order',views.OrderViewSet,basename='order'),
 urlpatterns = router.urls

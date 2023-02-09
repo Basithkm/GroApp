@@ -45,7 +45,7 @@ class Product(models.Model):
     category = models.ForeignKey(Category,on_delete=models.PROTECT)
     price= models.DecimalField(max_digits=6,decimal_places=2,default=Decimal(0))
     offer_in_percentage=models.DecimalField(max_digits=6,decimal_places=2,default=Decimal(0))
-    offer_in_percentage= models.IntegerField()
+    # offer_in_percentage= models.IntegerField()
     unit =models.CharField(choices=UNIT_CHOICES,max_length=3)
     last_update=models.DateField(auto_now_add=True)
 
@@ -89,21 +89,21 @@ class Order(models.Model):
     PAYMENT_STATUS_COMPLETE = 'C'
     PAYMENT_STATUS_FAILED = 'F'
 
-    PAYMENT_CHOICES = [
+    PAYMENT_STATUS_CHOICES = [
         (PAYMENT_STATUS_PENDING , 'Pending'),(PAYMENT_STATUS_COMPLETE, 'Compete'),(PAYMENT_STATUS_FAILED,'Failed')
     ]
 
-
     placed_at = models.DateTimeField(auto_now_add=True)
     customer = models.ForeignKey(Customer,on_delete=models.PROTECT)
-    membership = models.CharField(max_length=4,choices=PAYMENT_CHOICES ,default=PAYMENT_STATUS_PENDING)
+    payment_status = models.CharField(
+        max_length=1, choices=PAYMENT_STATUS_CHOICES, default=PAYMENT_STATUS_PENDING)
 
 
 class OrderItem(models.Model):
-    order = models.ForeignKey(Order ,on_delete=models.PROTECT)
+    order = models.ForeignKey(Order ,on_delete=models.PROTECT,related_name='items')
     product = models.ForeignKey(Product ,on_delete=models.PROTECT)
     quantity = models.PositiveSmallIntegerField()
-    unit_price = models.DecimalField(max_digits=6,decimal_places=2)
+    offer_price = models.DecimalField(max_digits=6,decimal_places=2)
 
 
 

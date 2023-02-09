@@ -89,7 +89,6 @@ class CategoryViewSet(ModelViewSet):
     queryset = Category.objects.annotate(product_count=Count('product')).all()
     serializer_class = CategorySerializer
     permission_classes =[IsAdminOrReadOnly]
-   
     def delete(self,request,pk):
         collection = get_object_or_404(Category,pk=pk)
         if collection.products.count()>0:
@@ -112,3 +111,37 @@ class BannerViewSet(ModelViewSet):
 class CartViewSet(CreateModelMixin,GenericViewSet,RetrieveModelMixin,DestroyModelMixin,UpdateModelMixin,ListModelMixin):
     queryset = Cart.objects.prefetch_related('items__product').all()
     serializer_class = CartSerializer
+
+
+class OrderViewSet(ModelViewSet):
+    http_method_names=['get','post','patch','delete','head','options']
+
+    def get_permissions(self):
+        if self.request.method in ['PUT','PATCH','DELETE']:
+            return [IsAdminUser()]
+        return [IsAuthenticated()]
+
+    def create(self, request, *args, **kwargs):
+        serializer =CreateOrderSerializer(data=request.data,context={'user_id':self.request.user.id})
+        serializer.is_valid(raise_exception=True)
+        order = serializer.save()
+        serializer=OrderSerializer(order)
+        return Response(serializer.data)
+
+
+    def get_serializer_class(self):
+        if self.request.method=='POST':
+            return CreateOrderSerializer
+        elif self.request.method=='PATCH':
+            return UpdateOrderSerializer
+        return OrderSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff:
+            return Order.objects.all()
+        try:
+            customer_id = Customer.objects.only('id').get(user_id = user.id)
+        except Customer.DoesNotExist:
+            customer_id =None
+        return Order.objects.filter(customer_id=customer_id)
