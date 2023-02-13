@@ -111,6 +111,20 @@ class BannerViewSet(ModelViewSet):
 class CartViewSet(CreateModelMixin,GenericViewSet,RetrieveModelMixin,DestroyModelMixin,UpdateModelMixin,ListModelMixin):
     queryset = Cart.objects.prefetch_related('items__product').all()
     serializer_class = CartSerializer
+    def get_permissions(self):
+        if self.request.method in ['PUT','PATCH','DELETE']:
+            return [IsAdminUser()]
+        return [IsAuthenticated()]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff:
+            return Order.objects.all()
+        try:
+            customer_id = Customer.objects.only('id').get(user_id = user.id)
+        except Customer.DoesNotExist:
+            customer_id =None
+        return Order.objects.filter(customer_id=customer_id)
 
 
 class OrderViewSet(ModelViewSet):
