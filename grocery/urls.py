@@ -17,7 +17,7 @@ from django.contrib import admin
 from django.urls import path,include
 from django.conf import settings
 from django.conf.urls.static import static
-
+from store.views import ProductList
 
 
 urlpatterns = [
@@ -25,6 +25,8 @@ urlpatterns = [
     path('store/',include('store.urls')),
     path('auth/', include('djoser.urls')),
     path('auth/', include('djoser.urls.jwt')),
+    path('productss/<int:category_id>/', ProductList.as_view(), name='product-list'),
+
 
 
 

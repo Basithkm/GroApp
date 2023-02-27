@@ -1,7 +1,7 @@
 from store.models import Product
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
-from store.admin import ProductAdmin
+# from store.admin import ProductAdmin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import User
 
@@ -20,5 +20,5 @@ class UserAdmin(BaseUserAdmin):
 
 
 
-admin.site.unregister(Product)
-admin.site.register(Product)
+# admin.site.unregister(Product)
+# admin.site.register(Product)

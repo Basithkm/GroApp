@@ -4,6 +4,8 @@ from uuid import uuid4
 from django.core.validators import MinValueValidator
 from django.contrib import admin
 from django.conf import settings
+from core.models import User
+
 
 
 # Create your models here.
@@ -23,12 +25,13 @@ class Category(models.Model):
     image = models.ImageField(upload_to='categoty_images',blank=True,null=True)
 
 
-
     def __str__(self) -> str:
         return self.name
 
-class Product(models.Model):
 
+
+
+class Product(models.Model):
     UNIT_GRAM = 'g'
     UNIT_KILOGRAM = 'kg'
     UNIT_NOS = 'Nos'
@@ -45,7 +48,6 @@ class Product(models.Model):
     category = models.ForeignKey(Category,on_delete=models.PROTECT)
     price= models.DecimalField(max_digits=6,decimal_places=2,default=Decimal(0))
     offer_in_percentage=models.DecimalField(max_digits=6,decimal_places=2,default=Decimal(0))
-    # offer_in_percentage= models.IntegerField()
     unit =models.CharField(choices=UNIT_CHOICES,max_length=3)
     last_update=models.DateField(auto_now_add=True)
 
@@ -84,6 +86,8 @@ class Customer(models.Model):
         ordering = ['user__first_name', 'user__last_name']
 
 
+
+
 class Order(models.Model):
     PAYMENT_STATUS_PENDING = 'P'
     PAYMENT_STATUS_COMPLETE = 'C'
@@ -113,20 +117,19 @@ class Address(models.Model):
     customer = models.OneToOneField(Customer,on_delete=models.CASCADE)
 
 
+
 class Cart(models.Model):
-    # id = models.UUIDField(primary_key=True,default=uuid4)
     created_at = models.DateTimeField(auto_now_add=True)
 
 
-
 class CartItem(models.Model):
-    cart = models.ForeignKey(Cart,on_delete=models.CASCADE,related_name='items')
-    product = models.ForeignKey(Product,on_delete=models.CASCADE)
-    quantity = models.PositiveSmallIntegerField(validators=[MinValueValidator(1)])
-
+    cart = models.ForeignKey(Cart, on_delete=models.CASCADE,related_name='items')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.PositiveSmallIntegerField(validators=[MinValueValidator(1)]) 
 
     class Meta:
         unique_together = [['cart','product']]
+
 
     
 

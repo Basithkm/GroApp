@@ -8,17 +8,32 @@ from django.utils.html import format_html, urlencode
 # Register your models here.
 
 
-admin.site.register(Banner)
-admin.site.register(Category)
-# admin.site.register(Product)
+
 admin.site.register(Cart)
-admin.site.register(CartItem)
+
+
+
+
+@admin.register(models.CartItem)
+class CartItemAdmin(admin.ModelAdmin):
+    list_display = ['cart','product','quantity']
+
+@admin.register(models.Banner)
+class BannerAdmin(admin.ModelAdmin):
+    list_display = ['id','name','image']
+
+
+@admin.register(models.Category)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ['id','name','image']
+
+
 
 @admin.register(models.Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ['name','image', 'price','offer_in_percentage','offer_price','unit','last_update','category_name']
-    list_editable = ['price']
-    # list_filter = ['last_update']
+    list_display = ['id','name','image','category','price','offer_price','offer_in_percentage','unit','category_name','last_update']
+    list_editable = ['offer_in_percentage']
+    list_filter = ['last_update']
     list_per_page = 10
     list_select_related = ['category']
     search_fields = ['name']
@@ -38,6 +53,7 @@ class CustomerAdmin(admin.ModelAdmin):
     search_fields = ['first_name__istartswith', 'last_name__istartswith']
 
     @admin.display(ordering='orders_count')
+    
     def orders(self, customer):
         url = (
             reverse('admin:store_order_changelist')
@@ -56,7 +72,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
 
 class OrderItemInline(admin.TabularInline):
-    # autocomplete_fields = ['product']
+    autocomplete_fields = ['product']
     min_num = 1
     max_num = 10
     model = models.OrderItem
@@ -67,4 +83,4 @@ class OrderItemInline(admin.TabularInline):
 class OrderAdmin(admin.ModelAdmin):
     autocomplete_fields = ['customer']
     inlines = [OrderItemInline]
-    list_display = ['id', 'placed_at', 'customer']
+    list_display = ['id', 'placed_at', 'payment_status','customer']

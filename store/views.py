@@ -2,22 +2,21 @@ from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.viewsets import ModelViewSet,GenericViewSet
-# from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter,OrderingFilter
 from . pagination import DefaultPagination
 from rest_framework.permissions import IsAuthenticated,AllowAny,IsAdminUser,DjangoModelPermissions
 from . models import *
 from . serializer import *
-# from . filter import ProductFilter
 from rest_framework.mixins import CreateModelMixin,RetrieveModelMixin,DestroyModelMixin,UpdateModelMixin,ListModelMixin
-
 from django.db.models import Count
 from rest_framework import status
 from  . permissions import IsAdminOrReadOnly,FullDjangoModelPermissions,ViewCustomerHistoryPermissions
+from rest_framework import generics
+from .models import Product
+from . serializer import ProductSerializer
 
 
 # Create your views here.
-
 
 
 # product fulldetails
@@ -26,14 +25,15 @@ class ProductViewSet(ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     # filter_backends = [SearchFilter,OrderingFilter]
+    filter_backends = [SearchFilter]
     pagination_class = DefaultPagination
     permission_classes =[IsAdminOrReadOnly]
-    # filterset_class = ProductFilter
-    search_fields = ['name']
-    ordering_fields = ['offer_price','last_update']
+    search_fields = ['name','category__name']
+    # ordering_fields = ['offer_price']
 
     def get_serializer_context(self):
         return {'request':self.request}
+    
 
 
     def destroy(self, request, *args, **kwargs):
@@ -50,7 +50,6 @@ class ReviewViewSet(ModelViewSet):
 
 
 
-
 # custome details
 
 class CustomerViewSet(ModelViewSet):
@@ -64,9 +63,9 @@ class CustomerViewSet(ModelViewSet):
         return Response("okk")
 
  
+
     @action(detail=False ,methods=['GET','PUT'],permission_classes =[IsAuthenticated])
     def me(self,request):
-    
         try:
             (customer,created) =Customer.objects.get_or_create(user_id=request.user.id)
         except Customer.DoesNotExist:
@@ -82,6 +81,16 @@ class CustomerViewSet(ModelViewSet):
 
 
 # Category details
+
+
+
+class ProductList(generics.ListAPIView):
+    serializer_class = ProductSerializer
+
+    def get_queryset(self):
+        category_id = self.kwargs['category_id']
+        queryset = Product.objects.filter(category_id=category_id)
+        return queryset
 
 
 
@@ -111,20 +120,30 @@ class BannerViewSet(ModelViewSet):
 class CartViewSet(CreateModelMixin,GenericViewSet,RetrieveModelMixin,DestroyModelMixin,UpdateModelMixin,ListModelMixin):
     queryset = Cart.objects.prefetch_related('items__product').all()
     serializer_class = CartSerializer
-    def get_permissions(self):
-        if self.request.method in ['PUT','PATCH','DELETE']:
-            return [IsAdminUser()]
-        return [IsAuthenticated()]
+    permission_classes=[IsAuthenticated]
+    
+
+
+
+class CartItemViewSet(ModelViewSet):
+    http_method_names=['get','post','patch','delete']
+    def get_serializer_class(self):
+        if self.request.method=='POST':
+            return AddCartSerializer
+
+        elif self.request.method=='PATCH':
+            return UpdateCartItemSerializer
+
+        return CartItemSerializer
+    
+    def get_serializer_context(self):
+        return {'cart_id':self.kwargs['cart_pk']}
+
 
     def get_queryset(self):
-        user = self.request.user
-        if user.is_staff:
-            return Order.objects.all()
-        try:
-            customer_id = Customer.objects.only('id').get(user_id = user.id)
-        except Customer.DoesNotExist:
-            customer_id =None
-        return Order.objects.filter(customer_id=customer_id)
+        return CartItem.objects.select_related('product').filter(cart_id =self.kwargs['cart_pk'])
+        
+
 
 
 class OrderViewSet(ModelViewSet):
@@ -135,12 +154,15 @@ class OrderViewSet(ModelViewSet):
             return [IsAdminUser()]
         return [IsAuthenticated()]
 
+
+
     def create(self, request, *args, **kwargs):
         serializer =CreateOrderSerializer(data=request.data,context={'user_id':self.request.user.id})
         serializer.is_valid(raise_exception=True)
         order = serializer.save()
         serializer=OrderSerializer(order)
         return Response(serializer.data)
+
 
 
     def get_serializer_class(self):
